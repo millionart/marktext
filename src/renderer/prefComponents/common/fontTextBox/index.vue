@@ -23,6 +23,7 @@
 <script>
 import { shell } from 'electron'
 
+/* global __non_webpack_require__ */
 // Example of fontmanager-redux objects:
 // {
 //     path: '/Library/Fonts/Arial.ttf',
@@ -44,6 +45,37 @@ import { shell } from 'electron'
 //     italic: false,
 //     monospace: false
 // }
+
+const EDITOR_FONT_FALLBACKS = [
+  'Open Sans',
+  'Clear Sans',
+  'Segoe UI',
+  'Microsoft YaHei UI',
+  'Microsoft YaHei',
+  'Arial',
+  'Helvetica Neue',
+  'Helvetica',
+  'Calibri',
+  'Noto Sans',
+  'SimSun',
+  'SimHei',
+  'sans-serif'
+]
+
+const MONOSPACE_FONT_FALLBACKS = [
+  'DejaVu Sans Mono',
+  'Consolas',
+  'Cascadia Code',
+  'Cascadia Mono',
+  'Source Code Pro',
+  'Droid Sans Mono',
+  'Courier New',
+  'monospace'
+]
+
+const uniqueFontFamilies = fonts => {
+  return [...new Set(fonts.filter(Boolean))]
+}
 
 export default {
   data () {
@@ -97,16 +129,34 @@ export default {
       if (typeof this.more === 'string') {
         shell.openExternal(this.more)
       }
+    },
+
+    getFallbackFontFamilies () {
+      const fallbacks = this.onlyMonospace ? MONOSPACE_FONT_FALLBACKS : EDITOR_FONT_FALLBACKS
+      return uniqueFontFamilies([
+        this.defaultValue,
+        ...fallbacks
+      ])
     }
   },
   mounted () {
     // Delay load native library because it's not needed for the editor and causes a delay.
-    const fontManager = require('fontmanager-redux')
+    let fontManager = null
+    try {
+      fontManager = __non_webpack_require__('fontmanager-redux')
+    } catch (err) {
+      this.fontFamilies = this.getFallbackFontFamilies()
+      return
+    }
+
     const { onlyMonospace } = this
     const buf = fontManager.getAvailableFontsSync()
       .filter(f => f.family && (!onlyMonospace || (onlyMonospace && f.monospace)))
       .map(f => f.family)
-    this.fontFamilies = [...new Set(buf)].sort((a, b) => a.localeCompare(b))
+    this.fontFamilies = uniqueFontFamilies(buf).sort((a, b) => a.localeCompare(b))
+    if (this.fontFamilies.length === 0) {
+      this.fontFamilies = this.getFallbackFontFamilies()
+    }
   }
 }
 </script>

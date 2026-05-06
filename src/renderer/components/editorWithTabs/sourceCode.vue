@@ -132,6 +132,10 @@ export default {
     bus.$emit('file-changed', { id: this.tabId, markdown, cursor, renderCursor: true })
   },
   methods: {
+    getScrollElement () {
+      return this.$refs.sourceCode
+    },
+
     handleImageAction ({ id, result, alt }) {
       const { editor } = this
       const value = editor.getValue()

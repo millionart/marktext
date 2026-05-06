@@ -73,6 +73,11 @@ const state = {
 
   watcherUsePolling: false,
 
+  llmBaseURL: '',
+  llmApiKey: '',
+  llmModel: '',
+  llmTargetLanguage: 'Chinese',
+
   // --------------------------------------------------------------------------
 
   // Edit modes of the current window (not part of persistent settings)
@@ -148,6 +153,9 @@ const actions = {
     ipcRenderer.on('mt::toggle-view-mode-entry', (event, entryName) => {
       commit('TOGGLE_VIEW_MODE', entryName)
       dispatch('DISPATCH_EDITOR_VIEW_STATE', { [entryName]: state[entryName] })
+    })
+    ipcRenderer.on('mt::translate-document', () => {
+      bus.$emit('translation:translate')
     })
   },
 

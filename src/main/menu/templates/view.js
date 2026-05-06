@@ -71,6 +71,11 @@ export default function (keybindings) {
       click (item, focusedWindow) {
         actions.reloadImageCache(focusedWindow)
       }
+    }, {
+      label: 'Translate Document',
+      click (item, focusedWindow) {
+        actions.translateDocument(focusedWindow)
+      }
     }]
   }
 

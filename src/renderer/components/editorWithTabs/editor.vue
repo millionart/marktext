@@ -9,6 +9,7 @@
     <div
       ref="editor"
       class="editor-component"
+      v-once
     ></div>
     <div
       class="image-viewer"
@@ -664,6 +665,10 @@ export default {
     })
   },
   methods: {
+    getScrollElement () {
+      return this.editor && this.editor.container
+    },
+
     photoCreatorClick: (url) => {
       shell.openExternal(url)
     },
@@ -1114,6 +1119,19 @@ export default {
       if (this.editor) {
         document.execCommand('paste')
       }
+    },
+
+    recoverEditorDomIfCleared () {
+      if (!this.editor || !this.markdown || !this.markdown.trim()) {
+        return
+      }
+
+      const root = this.editor.container && this.editor.container.querySelector('#ag-editor-id')
+      if (!root || root.textContent.trim()) {
+        return
+      }
+
+      this.editor.contentState.render(false, true)
     }
   },
   beforeDestroy () {
@@ -1151,6 +1169,10 @@ export default {
 
     this.editor.destroy()
     this.editor = null
+  },
+
+  updated () {
+    this.recoverEditorDomIfCleared()
   }
 }
 </script>

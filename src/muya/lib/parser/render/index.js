@@ -177,7 +177,7 @@ class StateRender {
       return this.renderBlock(null, block, activeBlocks, matches, true)
     })
     const newVdom = h(selector, children)
-    const rootDom = document.querySelector(selector) || this.container
+    const rootDom = this.container || document.querySelector(selector)
     const oldVdom = toVNode(rootDom)
 
     patch(oldVdom, newVdom)

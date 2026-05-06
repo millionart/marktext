@@ -6,6 +6,7 @@ import Markdown from '@/prefComponents/markdown'
 import SpellChecker from '@/prefComponents/spellchecker'
 import Theme from '@/prefComponents/theme'
 import Image from '@/prefComponents/image'
+import Llm from '@/prefComponents/llm'
 import Keybindings from '@/prefComponents/keybindings'
 
 const parseSettingsPage = type => {
@@ -37,6 +38,8 @@ const routes = type => ([{
     path: 'theme', component: Theme, name: 'theme'
   }, {
     path: 'image', component: Image, name: 'image'
+  }, {
+    path: 'llm', component: Llm, name: 'llm'
   }, {
     path: 'keybindings', component: Keybindings, name: 'keybindings'
   }]

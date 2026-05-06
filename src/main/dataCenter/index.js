@@ -2,14 +2,30 @@ import fs from 'fs'
 import path from 'path'
 import EventEmitter from 'events'
 import { BrowserWindow, ipcMain, dialog } from 'electron'
-import keytar from 'keytar'
 import schema from './schema'
 import Store from 'electron-store'
 import log from 'electron-log'
 import { ensureDirSync } from 'common/filesystem'
 import { IMAGE_EXTENSIONS } from 'common/filesystem/paths'
 
+/* global __non_webpack_require__ */
 const DATA_CENTER_NAME = 'dataCenter'
+let keytar = null
+let keytarResolved = false
+
+const getKeytar = () => {
+  if (keytarResolved) {
+    return keytar
+  }
+
+  keytarResolved = true
+  try {
+    keytar = __non_webpack_require__('keytar')
+  } catch (err) {
+    log.warn('Keytar is unavailable; secure user data will be disabled:', err.message)
+  }
+  return keytar
+}
 
 class DataCenter extends EventEmitter {
   constructor (paths) {
@@ -55,9 +71,14 @@ class DataCenter extends EventEmitter {
   async getAll () {
     const { serviceName, encryptKeys } = this
     const data = this.store.store
+    const secureStore = getKeytar()
+    if (!secureStore) {
+      return data
+    }
+
     try {
       const encryptData = await Promise.all(encryptKeys.map(key => {
-        return keytar.getPassword(serviceName, key)
+        return secureStore.getPassword(serviceName, key)
       }))
       const encryptObj = encryptKeys.reduce((acc, k, i) => {
         return {
@@ -110,7 +131,8 @@ class DataCenter extends EventEmitter {
   getItem (key) {
     const { encryptKeys, serviceName } = this
     if (encryptKeys.includes(key)) {
-      return keytar.getPassword(serviceName, key)
+      const secureStore = getKeytar()
+      return secureStore ? secureStore.getPassword(serviceName, key) : Promise.resolve(null)
     } else {
       const value = this.store.get(key)
       return Promise.resolve(value)
@@ -124,8 +146,13 @@ class DataCenter extends EventEmitter {
     }
     ipcMain.emit('broadcast-user-data-changed', { [key]: value })
     if (encryptKeys.includes(key)) {
+      const secureStore = getKeytar()
+      if (!secureStore) {
+        return false
+      }
+
       try {
-        return await keytar.setPassword(serviceName, key, value)
+        return await secureStore.setPassword(serviceName, key, value)
       } catch (err) {
         log.error('Keytar error:', err)
       }

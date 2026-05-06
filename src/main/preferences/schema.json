@@ -407,5 +407,25 @@
     "description": "Watcher--Whether to use polling. Polling may leads to high CPU utilization but is necessary to watch files over a network.",
     "type": "boolean",
     "default": false
+  },
+  "llmBaseURL": {
+    "description": "LLM--OpenAI-compatible API base URL.",
+    "type": "string",
+    "default": ""
+  },
+  "llmApiKey": {
+    "description": "LLM--OpenAI-compatible API key stored in preferences.",
+    "type": "string",
+    "default": ""
+  },
+  "llmModel": {
+    "description": "LLM--OpenAI-compatible model name.",
+    "type": "string",
+    "default": ""
+  },
+  "llmTargetLanguage": {
+    "description": "LLM--Default document translation target language.",
+    "type": "string",
+    "default": "Chinese"
   }
 }

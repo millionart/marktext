@@ -1,4 +1,22 @@
-import ced from 'ced'
+import log from 'electron-log'
+
+/* global __non_webpack_require__ */
+let ced = null
+let cedResolved = false
+
+const getCed = () => {
+  if (cedResolved) {
+    return ced
+  }
+
+  cedResolved = true
+  try {
+    ced = __non_webpack_require__('ced')
+  } catch (err) {
+    log.warn('Compact encoding detector is unavailable; falling back to UTF-8:', err.message)
+  }
+  return ced
+}
 
 const CED_ICONV_ENCODINGS = {
   'BIG5-CP950': 'big5',
@@ -63,7 +81,8 @@ export const guessEncoding = (buffer, autoGuessEncoding) => {
 
   // Auto guess encoding, otherwise use UTF8.
   if (autoGuessEncoding) {
-    encoding = ced(buffer)
+    const detectEncoding = getCed()
+    encoding = detectEncoding ? detectEncoding(buffer) : encoding
     if (CED_ICONV_ENCODINGS[encoding]) {
       encoding = CED_ICONV_ENCODINGS[encoding]
     } else {

@@ -4,6 +4,18 @@ import { findNearestParagraph } from '../selection/dom'
 import { getParagraphReference, getImageInfo } from '../utils'
 import { checkEditEmoji } from '../ui/emojis'
 
+const hasValidCursorBlocks = (contentState, cursor = selection.getCursorRange()) => {
+  const { start, end, anchor, focus } = cursor
+  const startCursor = start || anchor
+  const endCursor = end || focus
+  return !!(
+    startCursor &&
+    endCursor &&
+    contentState.getBlock(startCursor.key) &&
+    contentState.getBlock(endCursor.key)
+  )
+}
+
 class Keyboard {
   constructor (muya) {
     this.muya = muya
@@ -77,6 +89,9 @@ class Keyboard {
       // and no need to dispatch change.
       const { start, end } = selection.getCursorRange()
       if (!start || !end) {
+        return
+      }
+      if (!hasValidCursorBlocks(this.muya.contentState, { start, end })) {
         return
       }
 
@@ -163,6 +178,22 @@ class Keyboard {
         // event.stopPropagation()
         return
       }
+
+      if (
+        event.key === EVENT_KEYS.Backspace ||
+        event.key === EVENT_KEYS.Delete ||
+        event.key === EVENT_KEYS.Enter ||
+        event.key === EVENT_KEYS.ArrowUp ||
+        event.key === EVENT_KEYS.ArrowDown ||
+        event.key === EVENT_KEYS.ArrowLeft ||
+        event.key === EVENT_KEYS.ArrowRight ||
+        event.key === EVENT_KEYS.Tab
+      ) {
+        if (!hasValidCursorBlocks(contentState)) {
+          return
+        }
+      }
+
       switch (event.key) {
         case EVENT_KEYS.Backspace:
           contentState.backspaceHandler(event)
@@ -254,6 +285,9 @@ class Keyboard {
 
       const { anchor, focus, start, end } = selection.getCursorRange()
       if (!anchor || !focus) {
+        return
+      }
+      if (!hasValidCursorBlocks(contentState, { start, end, anchor, focus })) {
         return
       }
       if (

@@ -74,6 +74,12 @@ export const reloadImageCache = win => {
   }
 }
 
+export const translateDocument = win => {
+  if (win && win.webContents) {
+    win.webContents.send('mt::translate-document')
+  }
+}
+
 // --- Commands -------------------------------------------------------------
 
 export const loadViewCommands = commandManager => {
