@@ -106,6 +106,10 @@ import { moveImageToFolder, moveToRelativeFolder, uploadImage } from '@/util/fil
 import { guessClipboardFilePath } from '@/util/clipboard'
 import { getCssForOptions, getHtmlToc } from '@/util/pdf'
 import { addCommonStyle, setEditorWidth } from '@/util/theme'
+import {
+  getMuyaChangeDocumentId,
+  shouldIgnoreProgrammaticMuyaChange
+} from './editorChange.js'
 
 import 'muya/themes/default.css'
 import '@/assets/themes/codemirror/one-dark.css'
@@ -188,6 +192,8 @@ export default {
       isShowClose: false,
       dialogTableVisible: false,
       imageViewerVisible: false,
+      tabId: null,
+      pendingProgrammaticChanges: 0,
       tableChecker: {
         rows: 4,
         columns: 3
@@ -439,6 +445,10 @@ export default {
 
     currentFile: function (value, oldValue) {
       if (value && value !== oldValue) {
+        const { id, markdown, cursor, history } = value
+        if (this.editor && id && typeof markdown === 'string') {
+          this.handleFileChange({ id, markdown, cursor, renderCursor: true, history })
+        }
         this.scrollToCursor(0)
         // Hide float tools if needed.
         this.editor && this.editor.hideAllFloatTools()
@@ -457,6 +467,7 @@ export default {
       this.printer = new Printer()
       const ele = this.$refs.editor
       const {
+        currentFile,
         focus: focusMode,
         markdown,
         preferLooseListItem,
@@ -551,6 +562,7 @@ export default {
       }
 
       const { container } = this.editor = new Muya(ele, options)
+      this.tabId = currentFile && currentFile.id
 
       // Create spell check wrapper and enable spell checking if preferred.
       this.spellchecker = new SpellChecker(spellcheckerEnabled, spellcheckerLanguage)
@@ -595,8 +607,14 @@ export default {
       bus.$on('replace-misspelling', this.replaceMisspelling)
 
       this.editor.on('change', changes => {
-        // WORKAROUND: "id: 'muya'"
-        this.$store.dispatch('LISTEN_FOR_CONTENT_CHANGE', Object.assign(changes, { id: 'muya' }))
+        if (shouldIgnoreProgrammaticMuyaChange(this.pendingProgrammaticChanges)) {
+          this.pendingProgrammaticChanges--
+          return
+        }
+
+        this.$store.dispatch('LISTEN_FOR_CONTENT_CHANGE', Object.assign(changes, {
+          id: getMuyaChangeDocumentId(this.tabId)
+        }))
       })
 
       this.editor.on('format-click', ({ event, formatType, data }) => {
@@ -1073,12 +1091,9 @@ export default {
     setMarkdownToEditor ({ id, markdown, cursor }) {
       const { editor } = this
       if (editor) {
+        this.tabId = id
         editor.clearHistory()
-        if (cursor) {
-          editor.setMarkdown(markdown, cursor, true)
-        } else {
-          editor.setMarkdown(markdown)
-        }
+        this.setEditorMarkdown(markdown, cursor, !!cursor)
       }
     },
 
@@ -1087,11 +1102,12 @@ export default {
       const { editor } = this
       this.$nextTick(() => {
         if (editor) {
+          this.tabId = id
           if (history) {
             editor.setHistory(history)
           }
           if (typeof markdown === 'string') {
-            editor.setMarkdown(markdown, cursor, renderCursor)
+            this.setEditorMarkdown(markdown, cursor, renderCursor)
           } else if (cursor) {
             editor.setCursor(cursor)
           }
@@ -1105,6 +1121,11 @@ export default {
     handleInsertParagraph (location) {
       const { editor } = this
       editor && editor.insertParagraph(location)
+    },
+
+    setEditorMarkdown (markdown, cursor, renderCursor) {
+      this.pendingProgrammaticChanges++
+      this.editor.setMarkdown(markdown, cursor, renderCursor)
     },
 
     blurEditor () {

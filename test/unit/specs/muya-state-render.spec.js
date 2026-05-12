@@ -39,4 +39,38 @@ describe('Muya StateRender', () => {
       rightRoot.remove()
     }
   })
+
+  it('keeps rendering into the patched root after the initial placeholder is replaced', () => {
+    const placeholder = document.createElement('div')
+    document.body.appendChild(placeholder)
+
+    const renderer = new StateRender({
+      eventCenter: {},
+      options: {},
+      contentState: {
+        cursor: {
+          start: { key: 'first-block' }
+        },
+        selectedBlock: null
+      }
+    })
+    renderer.setContainer(placeholder)
+    renderer.renderBlock = (parent, block) => h(`p#${block.key}`, block.text)
+    renderer.renderMermaid = () => {}
+    renderer.renderDiagram = () => {}
+
+    try {
+      renderer.render([{ key: 'first-block', type: 'p', text: 'first' }], [], null)
+      renderer.muya.contentState.cursor.start.key = 'second-block'
+      renderer.render([{ key: 'second-block', type: 'p', text: 'second' }], [], null)
+
+      expect(document.querySelector('#ag-editor-id').textContent).to.equal('second')
+    } finally {
+      const root = document.querySelector('#ag-editor-id')
+      if (root) {
+        root.remove()
+      }
+      placeholder.remove()
+    }
+  })
 })

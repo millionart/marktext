@@ -23,6 +23,8 @@ const state = {
   toc: []
 }
 
+export const shouldSelectBootstrapMarkdown = index => index === 0
+
 const mutations = {
   // set search key and matches also index
   SET_SEARCH (state, value) {
@@ -656,10 +658,11 @@ const actions = {
       if (addBlankTab) {
         dispatch('NEW_UNTITLED_TAB', {})
       } else if (markdownList.length) {
-        let isFirst = true
-        for (const markdown of markdownList) {
-          isFirst = false
-          dispatch('NEW_UNTITLED_TAB', { markdown, selected: isFirst })
+        for (let index = 0; index < markdownList.length; index++) {
+          dispatch('NEW_UNTITLED_TAB', {
+            markdown: markdownList[index],
+            selected: shouldSelectBootstrapMarkdown(index)
+          })
         }
       }
     })
@@ -1130,8 +1133,6 @@ const actions = {
 
   LISTEN_FOR_FILE_CHANGE ({ commit, state, rootState }) {
     ipcRenderer.on('mt::update-file', (e, { type, change }) => {
-      // TODO: We should only load the changed content if the user want to reload the document.
-
       const { tabs } = state
       const { pathname } = change
       const tab = tabs.find(t => isSamePathSync(t.pathname, pathname))
@@ -1152,18 +1153,16 @@ const actions = {
           case 'add':
           case 'change': {
             const { autoSave } = rootState.preferences
-            if (autoSave) {
-              if (autoSaveTimers.has(id)) {
-                const timer = autoSaveTimers.get(id)
-                clearTimeout(timer)
-                autoSaveTimers.delete(id)
-              }
+            if (autoSave && autoSaveTimers.has(id)) {
+              const timer = autoSaveTimers.get(id)
+              clearTimeout(timer)
+              autoSaveTimers.delete(id)
+            }
 
-              // Only reload the content if the tab is saved.
-              if (isSaved) {
-                commit('LOAD_CHANGE', change)
-                return
-              }
+            // If the tab has no local edits, keep it in sync with disk like VS Code.
+            if (isSaved) {
+              commit('LOAD_CHANGE', change)
+              return
             }
 
             commit('SET_SAVE_STATUS_BY_TAB', { tab, status: false })

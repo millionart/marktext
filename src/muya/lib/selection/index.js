@@ -410,8 +410,16 @@ class Selection {
 
   setCursorRange (cursorRange) {
     const { anchor, focus } = cursorRange
+    if (!anchor || !focus) {
+      return false
+    }
+
     const anchorParagraph = document.querySelector(`#${anchor.key}`)
     const focusParagraph = document.querySelector(`#${focus.key}`)
+    if (!anchorParagraph || !focusParagraph) {
+      return false
+    }
+
     const getNodeAndOffset = (node, offset) => {
       if (node.nodeType === 3) {
         return {
@@ -491,6 +499,7 @@ class Selection {
     this.select(anchorNode, anchorOffset)
     // Secondly, set the focus node and focus offset.
     this.setFocus(focusNode, focusOffset)
+    return true
   }
 
   isValidCursorNode (node) {
@@ -499,7 +508,29 @@ class Selection {
       node = node.parentNode
     }
 
-    return node.closest('span.ag-paragraph')
+    return node.closest(`.${CLASS_OR_ID.AG_PARAGRAPH}`)
+  }
+
+  getParagraphOffset (node, paragraph, offset) {
+    const baseOffset = getOffsetOfParagraph(node, paragraph)
+
+    if (node.nodeType === 3) {
+      return baseOffset + offset
+    }
+
+    const { childNodes } = node
+    let childOffset = 0
+    const len = Math.min(offset, childNodes.length)
+
+    for (let i = 0; i < len; i++) {
+      const child = childNodes[i]
+      if (child.classList && child.classList.contains(CLASS_OR_ID.AG_FRONT_ICON)) {
+        continue
+      }
+      childOffset += getTextContent(child, [CLASS_OR_ID.AG_MATH_RENDER, CLASS_OR_ID.AG_RUBY_RENDER]).length
+    }
+
+    return baseOffset + childOffset
   }
 
   getCursorRange () {
@@ -540,13 +571,14 @@ class Selection {
     const anchorParagraph = findNearestParagraph(anchorNode)
     const focusParagraph = findNearestParagraph(focusNode)
 
-    let aOffset = getOffsetOfParagraph(anchorNode, anchorParagraph) + anchorOffset
-    let fOffset = getOffsetOfParagraph(focusNode, focusParagraph) + focusOffset
+    let aOffset = this.getParagraphOffset(anchorNode, anchorParagraph, anchorOffset)
+    let fOffset = this.getParagraphOffset(focusNode, focusParagraph, focusOffset)
 
     // fix input after image.
     if (
       anchorNode === focusNode &&
       anchorOffset === focusOffset &&
+      anchorNode.parentNode &&
       anchorNode.parentNode.classList.contains('ag-image-container') &&
       anchorNode.previousElementSibling &&
       anchorNode.previousElementSibling.nodeName === 'IMG'

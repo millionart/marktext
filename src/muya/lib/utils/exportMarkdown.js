@@ -15,6 +15,7 @@ class ExportMarkdown {
     this.listType = [] // 'ul' or 'ol'
     // helper to translate the first tight item in a nested list
     this.isLooseParentList = true
+    this.looseListHasBlockSpacing = []
     this.isGitlabCompatibilityEnabled = !!isGitlabCompatibilityEnabled
 
     // set and validate settings
@@ -33,7 +34,7 @@ class ExportMarkdown {
     return this.translateBlocks2Markdown(this.blocks)
   }
 
-  translateBlocks2Markdown (blocks, indent = '', listIndent = '') {
+  translateBlocks2Markdown (blocks, indent = '', listIndent = '', isTightListItem = false, blankLineIndent = indent) {
     const result = []
     // helper for CommonMark 264
     let lastListBullet = ''
@@ -46,7 +47,7 @@ class ExportMarkdown {
       switch (block.type) {
         case 'p':
         case 'hr': {
-          this.insertLineBreak(result, indent)
+          this.insertLineBreak(result, blankLineIndent, isTightListItem)
           result.push(this.translateBlocks2Markdown(block.children, indent))
           break
         }
@@ -60,12 +61,12 @@ class ExportMarkdown {
         case 'h4':
         case 'h5':
         case 'h6': {
-          this.insertLineBreak(result, indent)
+          this.insertLineBreak(result, blankLineIndent, isTightListItem)
           result.push(this.normalizeHeaderText(block, indent))
           break
         }
         case 'figure': {
-          this.insertLineBreak(result, indent)
+          this.insertLineBreak(result, blankLineIndent, isTightListItem)
           switch (block.functionType) {
             case 'table': {
               const table = block.children[0]
@@ -96,12 +97,13 @@ class ExportMarkdown {
           break
         }
         case 'li': {
-          const insertNewLine = block.isLooseListItem
+          const listHasBlockSpacing = this.looseListHasBlockSpacing[this.looseListHasBlockSpacing.length - 1]
+          const insertNewLine = block.isListItemSeparated || (block.isLooseListItem && !listHasBlockSpacing)
 
           // helper variable to correct the first tight item in a nested list
           this.isLooseParentList = insertNewLine
           if (insertNewLine) {
-            this.insertLineBreak(result, indent)
+            this.insertLineBreak(result, blankLineIndent)
           }
           result.push(this.normalizeListItem(block, indent + listIndent))
           this.isLooseParentList = true
@@ -118,7 +120,7 @@ class ExportMarkdown {
           }
           lastListBullet = bulletMarkerOrDelimiter
           if (insertNewLine) {
-            this.insertLineBreak(result, indent)
+            this.insertLineBreak(result, blankLineIndent)
           }
 
           this.listType.push({ type: 'ul' })
@@ -137,7 +139,7 @@ class ExportMarkdown {
           }
           lastListBullet = bulletMarkerOrDelimiter
           if (insertNewLine) {
-            this.insertLineBreak(result, indent)
+            this.insertLineBreak(result, blankLineIndent)
           }
           const listCount = block.start !== undefined ? block.start : 1
           this.listType.push({ type: 'ol', listCount })
@@ -146,7 +148,7 @@ class ExportMarkdown {
           break
         }
         case 'pre': {
-          this.insertLineBreak(result, indent)
+          this.insertLineBreak(result, blankLineIndent, isTightListItem)
           if (block.functionType === 'frontmatter') {
             result.push(this.normalizeFrontMatter(block, indent))
           } else {
@@ -155,7 +157,7 @@ class ExportMarkdown {
           break
         }
         case 'blockquote': {
-          this.insertLineBreak(result, indent)
+          this.insertLineBreak(result, blankLineIndent, isTightListItem)
           result.push(this.normalizeBlockquote(block, indent))
           break
         }
@@ -168,8 +170,8 @@ class ExportMarkdown {
     return result.join('')
   }
 
-  insertLineBreak (result, indent) {
-    if (!result.length) return
+  insertLineBreak (result, indent, isTightListItem = false) {
+    if (!result.length || isTightListItem) return
     result.push(`${indent}\n`)
   }
 
@@ -350,7 +352,17 @@ class ExportMarkdown {
 
   normalizeList (block, indent, listIndent) {
     const { children } = block
-    return this.translateBlocks2Markdown(children, indent, listIndent)
+    const hasBlockSpacing = children.some(child => child.isLooseListItem && this.hasListItemBlockSpacing(child))
+    this.looseListHasBlockSpacing.push(hasBlockSpacing)
+    const markdown = this.translateBlocks2Markdown(children, indent, listIndent)
+    this.looseListHasBlockSpacing.pop()
+    return markdown
+  }
+
+  hasListItemBlockSpacing (block) {
+    const { children, listItemType } = block
+    const markdownChildren = listItemType === 'task' ? children.slice(1) : children
+    return markdownChildren.length > 1
   }
 
   normalizeListItem (block, indent) {
@@ -399,7 +411,9 @@ class ExportMarkdown {
     }
 
     result.push(`${indent}${itemMarker}`)
-    result.push(this.translateBlocks2Markdown(children, newIndent, listIndent).substring(newIndent.length))
+    const isTightListItem = !block.isLooseListItem
+    const blankLineIndent = isTightListItem ? newIndent : ''
+    result.push(this.translateBlocks2Markdown(children, newIndent, listIndent, isTightListItem, blankLineIndent).substring(newIndent.length))
     return result.join('')
   }
 

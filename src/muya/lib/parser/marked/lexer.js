@@ -446,6 +446,7 @@ Lexer.prototype.token = function (src, top) {
         // loose = next = next || /^ *([*+-]|\d{1,9}(?:\.|\)))( +\S+\n\n(?!\s*$)|\n\n(?!\s*$))/.test(itemWithBullet)
         loose = next = next || /\n\n(?!\s*$)/.test(item)
         // Check if previous line ends with a new line.
+        const isListItemSeparated = i !== 0 && prevItem.length !== 0 && prevItem.charAt(prevItem.length - 1) === '\n'
         if (!loose && (i !== 0 || l > 1) && prevItem.length !== 0 && prevItem.charAt(prevItem.length - 1) === '\n') {
           loose = next = true
         }
@@ -464,12 +465,16 @@ Lexer.prototype.token = function (src, top) {
         }
 
         const isOrderedListItem = /\d/.test(bull)
-        this.tokens.push({
+        const token = {
           checked,
           listItemType: bull.length > 1 ? 'order' : (isTaskList ? 'task' : 'bullet'),
           bulletMarkerOrDelimiter: isOrderedListItem ? bull.slice(-1) : bull.charAt(0),
           type: loose ? 'loose_item_start' : 'list_item_start'
-        })
+        }
+        if (isListItemSeparated) {
+          token.isListItemSeparated = true
+        }
+        this.tokens.push(token)
 
         if (/^\s*$/.test(item)) {
           this.tokens.push({

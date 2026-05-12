@@ -223,4 +223,58 @@ sep
 
     verifyMarkdown(md, 'dfm', md)
   })
+
+  it('Preserves fenced code blocks in tight list items', () => {
+    const md = `- Prefer serving the \`.user.js\` file from a temporary HTTP server:
+  \`\`\`powershell
+  python -m http.server 17893 --bind 127.0.0.1
+  \`\`\`
+  Open:
+  \`\`\`text
+  http://localhost:17893/Script%20Name.user.js
+  \`\`\`
+- Use \`localhost\` in Chrome MCP navigation.
+`
+
+    verifyMarkdown(md, 1, md)
+  })
+
+  it('Preserves loose list item blank lines without rewriting sibling items', () => {
+    const md = `- Prefer serving the \`.user.js\` file from a temporary HTTP server:
+
+  \`\`\`powershell
+  python -m http.server 17893 --bind 127.0.0.1
+  \`\`\`
+
+  Open:
+
+  \`\`\`text
+  http://localhost:17893/Script%20Name.user.js
+  \`\`\`
+- Use \`localhost\` in Chrome MCP navigation.
+- Keep the HTTP server read-only.
+`
+
+    verifyMarkdown(md, 1, md)
+  })
+
+  it('Preserves separated loose list item sibling spacing', () => {
+    const md = `- Prefer serving the \`.user.js\` file from a temporary HTTP server:
+
+  \`\`\`powershell
+  python -m http.server 17893 --bind 127.0.0.1
+  \`\`\`
+
+  Open:
+
+  \`\`\`text
+  http://localhost:17893/Script%20Name.user.js
+  \`\`\`
+
+- Use \`localhost\` in Chrome MCP navigation.
+- Keep the HTTP server read-only.
+`
+
+    verifyMarkdown(md, 1, md)
+  })
 })

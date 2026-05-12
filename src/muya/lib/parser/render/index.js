@@ -180,7 +180,8 @@ class StateRender {
     const rootDom = this.container || document.querySelector(selector)
     const oldVdom = toVNode(rootDom)
 
-    patch(oldVdom, newVdom)
+    const patchedVdom = patch(oldVdom, newVdom)
+    this.container = patchedVdom.elm
     this.renderMermaid()
     this.renderDiagram()
     this.codeCache.clear()
